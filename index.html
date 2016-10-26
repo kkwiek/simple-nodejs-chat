@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+  <head>
+    <title>chat</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <style>
+      #main-content {
+        width: 100%;
+        height: 100vh;
+        margin-left: 0;
+      }
+
+      #main-content > div {
+        height: 100%;
+      }
+
+      #message-area {
+        overflow-y: auto;
+        height: calc(100% - 50px);
+      }
+
+      #message-form {
+        position: absolute;
+        bottom: 5px;
+        width: 100%;
+      }
+
+      #message-form input {
+        width: calc(100% - 80px);
+        padding: 5px;
+        margin-right: .5%;
+        outline: none;
+      }
+
+      #user-list {
+        background: #efefef;
+        padding: 10px;
+        width: 100%;
+        height: 100%;
+      }
+
+      #user-list > h3 {
+        margin-top: 0;
+      }
+
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      #messages li {
+        padding: 5px 10px;
+      }
+
+      #messages li:nth-child(odd) {
+        background: #eee;
+      }
+
+      #messages li.system-info {
+        color: #5d6ddc;
+        font-weight: bold;
+      }
+
+      #username-area {
+        margin-top: 70px;
+        text-align: center;
+      }
+
+      #username-form {
+        display: inline-block;
+        text-align: left;
+      }
+
+      #username-form input {
+        padding: 5px;
+        outline: none;
+        border-radius: 2px;
+        border-style: solid;
+        border-width: 1px;
+        width: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="username-area">
+      <form id="username-form">
+        <h3>Enter username:</h3>
+        <input id="username-input" autocomplete="off"/>
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+    </div>
+
+    <div id="main-content" class="row hidden">
+      <div class="col-md-9">
+        <div id="message-area">
+          <ul id="messages"></ul>
+        </div>
+        <form id="message-form">
+          <input id="message-input" autocomplete="off"/>
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </div>
+      <div class="col-md-3">
+        <div id="user-list">
+          <h3>Logged Users</h3>
+          <ul id="users">
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io();
+      var username = "";
+
+      var messageArea = document.getElementById("message-area");
+      var messageInput = document.getElementById("message-input");
+      var usernameInput = document.getElementById("username-input");
+      var messages = document.getElementById("messages");
+
+      document.getElementById('username-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        username = usernameInput.value;
+        if (username.length < 1) {
+          return;
+        }
+
+        socket.emit('new user', username);
+        document.getElementById("username-area").remove();
+        document.getElementById("main-content").classList.remove("hidden");
+      });
+
+      document.getElementById('message-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = messageInput.value;
+        if (msg.length < 1) {
+          return;
+        }
+
+        socket.emit('chat message', msg);
+        messageInput.value = "";
+
+        addMessage(username + ": " + msg);
+      });
+
+      socket.on('user connected', function (data) {
+        addMessage(data.username + " connected", "system-info");
+      });
+
+      socket.on('user disconnected', function (data) {
+        addMessage(data.username + " disconnected", "system-info");
+      });
+
+      socket.on('chat message', function (data) {
+        addMessage(data.username + ": " + data.message);
+      });
+
+      socket.on('get users', function (users) {
+        var html = "";
+        users.forEach(function (user) {
+          html += "<li>" + user + "</li>";
+        });
+
+        document.getElementById("users").innerHTML = html;
+      });
+
+      function addMessage(message, className) {
+        var li = document.createElement("li");
+        li.innerHTML = message;
+        li.className = className || "";
+
+        document.getElementById("messages").appendChild(li);
+
+        messageArea.scrollTop = messageArea.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
